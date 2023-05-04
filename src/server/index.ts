@@ -7,16 +7,6 @@ import { AsstMsg } from '../types/core'
 import { defaultAdb } from '../device/utils'
 import cors from 'cors'
 
-function castString(value: any, def?: null): string | null
-function castString(value: any, def: string): string
-function castString(value: any, def: string | null = null): string | null {
-  if (typeof value !== 'string') {
-    return def
-  } else {
-    return value
-  }
-}
-
 @Singleton
 export class Server {
   loader: CoreLoader
@@ -39,39 +29,44 @@ export class Server {
     const callbackCache: Record<string, [number, Record<string, unknown>][]> = {}
     const wrappers: Record<string, InstanceWrapper> = {}
 
+    function makeSuccess<T extends Record<string | number, unknown>>(result: T) {
+      return {
+        success: true,
+        result,
+      }
+    }
+
+    function makeError(error: string) {
+      return {
+        success: false,
+        error,
+      }
+    }
+
     this.server.get('/api/version', (req, res) => {
       res.send(
-        JSON.stringify({
-          success: true,
-          result: {
-            version: this.loader.GetVersion() ?? 'N/A',
-          },
+        makeSuccess({
+          version: this.loader.GetVersion() ?? 'N/A',
         })
       )
     })
 
     this.server.get('/api/scan', async (req, res) => {
       res.send(
-        JSON.stringify({
-          success: true,
-          result: {
-            emulators: await (await getEmulators())(),
-          },
+        makeSuccess({
+          emulators: await (await getEmulators())(),
         })
       )
     })
 
     this.server.get('/api/listen', (req, res) => {
-      const uuid = castString(req.query.uuid)
-      if (!uuid) {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'uuid required',
-          })
-        )
+      const uuid = req.query.uuid as string
+
+      if (!(uuid in wrappers)) {
+        res.send(makeError('uuid not exists'))
         return
       }
+
       const id = callbackCounter[uuid]
       callbackCounter[uuid] = id + 1
       const multiId = `${uuid}/${id}`
@@ -86,79 +81,48 @@ export class Server {
         return true
       })
       res.send(
-        JSON.stringify({
-          success: true,
-          result: {
-            id,
-          },
+        makeSuccess({
+          id,
         })
       )
     })
 
     this.server.get('/api/unlisten', (req, res) => {
-      const uuid = castString(req.query.uuid)
-      if (!uuid) {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'uuid required',
-          })
-        )
+      const uuid = req.query.uuid as string
+
+      if (!(uuid in wrappers)) {
+        res.send(makeError('uuid not exists'))
         return
       }
-      const id = castString(req.query.id)
-      if (!id) {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'id required',
-          })
-        )
-        return
-      }
+
+      const id = req.query.id as string
       const multiId = `${uuid}/${id}`
+
       const rest = callbackCache[multiId] ?? []
       if (multiId in callbackCache) {
         delete callbackCache[multiId]
       }
       res.send(
-        JSON.stringify({
-          success: true,
-          result: {
-            rest,
-          },
+        makeSuccess({
+          rest,
         })
       )
     })
 
     this.server.get('/api/poll', (req, res) => {
-      const uuid = castString(req.query.uuid)
-      if (!uuid) {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'uuid required',
-          })
-        )
+      const uuid = req.query.uuid as string
+
+      if (!(uuid in wrappers)) {
+        res.send(makeError('uuid not exists'))
         return
       }
-      const id = castString(req.query.id)
-      if (!id) {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'id required',
-          })
-        )
-        return
-      }
+
+      const id = req.query.id as string
       const multiId = `${uuid}/${id}`
-      const peek = castString(req.query.peek, '1') !== '0'
-      let countStr = castString(req.query.count, '1')
-      let count = parseInt(countStr)
-      if (isNaN(count) || count < 0) {
-        count = 0
-      }
+
+      const peek = ((req.query.peek as string | undefined) ?? '1') !== '0'
+      const count = parseInt((req.query.count as string | undefined) ?? '1')
+
       let data: (typeof callbackCache)[string] = []
       if (peek) {
         data = callbackCache[multiId].slice(0, count)
@@ -166,30 +130,15 @@ export class Server {
         data = callbackCache[multiId].splice(0, count)
       }
       res.send(
-        JSON.stringify({
-          success: true,
-          result: {
-            data,
-          },
+        makeSuccess({
+          data,
         })
       )
     })
 
     this.server.get('/api/create', (req, res) => {
-      const uuid = req.query.uuid
-      if (!uuid || typeof uuid !== 'string') {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'uuid required',
-          })
-        )
-        return
-      }
-      let touchMode = req.query.touch
-      if (typeof touchMode !== 'string' || !['minitouch', 'maatouch', 'adb'].includes(touchMode)) {
-        touchMode = 'minitouch'
-      }
+      const uuid = req.query.uuid as string
+      const touchMode = (req.query.touch as string | undefined) ?? 'minitouch'
 
       this.callbacks[uuid] = CoreLoader.bindCallback((code, data) => {
         logger.info('Callback called with', code, data)
@@ -209,49 +158,27 @@ export class Server {
       callbackBind[uuid] = []
       callbackCounter[uuid] = 0
 
-      res.send(
-        JSON.stringify({
-          success: true,
-          result: {},
-        })
-      )
+      res.send(makeSuccess({}))
     })
 
     this.server.post('/api/connect', (req, res) => {
       const body = req.body as {
-        uuid?: string
-        adb?: string
-        address?: string
-        config?: string
+        uuid: string
+        address: string
+        config: string
       }
+
       const uuid = body.uuid
-      if (!uuid || typeof uuid !== 'string') {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'uuid required',
-          })
-        )
-        return
-      }
+
       if (!(uuid in wrappers)) {
-        res.send(
-          JSON.stringify({
-            success: false,
-            error: 'uuid not exists',
-          })
-        )
+        res.send(makeError('uuid not exists'))
         return
       }
+
       const callId = wrappers[uuid].AsyncConnect(defaultAdb, body.address ?? '', body.config ?? '')
       callbackBind[uuid].push((code, data) => {
         if (code === AsstMsg.AsyncCallInfo && data.async_call_id === callId) {
-          res.send(
-            JSON.stringify({
-              success: true,
-              result: data,
-            })
-          )
+          res.send(makeSuccess(data))
           return false
         }
         return true

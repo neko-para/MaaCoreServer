@@ -1,4 +1,5 @@
 import { CoreLoader } from '.'
+import { logger } from '../utils/logger'
 
 export function createWrapper(instance) {
   const loader = new CoreLoader()
@@ -11,7 +12,7 @@ export function createWrapper(instance) {
           return target[key]
         }
         return (...args) => {
-          console.log(key, ...args)
+          logger.info('Called via proxy:', key, ...args)
           return loader[key].call(loader, target.instance, ...args)
         }
       },
