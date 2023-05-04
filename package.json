@@ -14,6 +14,8 @@
   "dependencies": {
     "@tigerconnect/ffi-napi": "^4.0.3-tc3",
     "@tigerconnect/ref-napi": "^4.0.0-tc8",
+    "@types/cors": "^2.8.13",
+    "cors": "^2.8.5",
     "execa": "^7.1.1",
     "express": "^4.18.2",
     "iconv-lite": "^0.6.3",

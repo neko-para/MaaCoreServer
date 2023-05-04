@@ -5,6 +5,7 @@ import { logger } from '../utils/logger'
 import { getEmulators } from '../device'
 import { AsstMsg } from '../types/core'
 import { defaultAdb } from '../device/utils'
+import cors from 'cors'
 
 function castString(value: any, def?: null): string | null
 function castString(value: any, def: string): string
@@ -28,6 +29,7 @@ export class Server {
     this.callbacks = {}
 
     this.server.use(express.json())
+    this.server.use(cors())
 
     const callbackBind: Record<
       string,
