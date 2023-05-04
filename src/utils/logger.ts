@@ -16,5 +16,8 @@ log4js.configure({
   },
 })
 
-export const logger = log4js.getLogger()
-logger.level = logLevel
+export const logger = {
+  default: log4js.getLogger(),
+  express: log4js.getLogger('express'),
+  ffi: log4js.getLogger('ffi'),
+}

@@ -87,7 +87,7 @@ async function getNox(emulator: Emulator) {
       const vmName = line[1]
       const configPath = path.resolve(root, 'BignoxVMS', vmName, `${vmName}.vbox`)
       if (!configPath) {
-        logger.error('Nox config file not exist!', configPath)
+        logger.default.error('Nox config file not exist!', configPath)
         return
       }
       const config = await fs.readFile(configPath, 'utf-8')
@@ -97,7 +97,7 @@ async function getNox(emulator: Emulator) {
       if (configPort) {
         emulator.address = `127.0.0.1:${configPort[1]}`
       } else {
-        logger.error("Nox config file doesn't contain port information!", configPath)
+        logger.default.error("Nox config file doesn't contain port information!", configPath)
       }
     }
   }

@@ -12,7 +12,7 @@ export function createWrapper(instance) {
           return target[key]
         }
         return (...args) => {
-          logger.info('Called via proxy:', key, ...args)
+          logger.ffi.info('Called via proxy:', key, ...args)
           return loader[key].call(loader, target.instance, ...args)
         }
       },

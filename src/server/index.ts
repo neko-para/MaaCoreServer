@@ -20,6 +20,19 @@ export class Server {
 
     this.server.use(express.json())
     this.server.use(cors())
+    this.server.use((req, res, next) => {
+      switch (req.method) {
+        case 'GET':
+          logger.express.info('GET', req.path, req.query)
+          break
+        case 'POST':
+          logger.express.info('POST', req.path, req.body)
+          break
+        default:
+          logger.express.warn('Unknown request method', req.method, req.path, req.query, req.body)
+      }
+      next()
+    })
 
     const callbackBind: Record<
       string,
@@ -141,7 +154,7 @@ export class Server {
       const touchMode = (req.query.touch as string | undefined) ?? 'minitouch'
 
       this.callbacks[uuid] = CoreLoader.bindCallback((code, data) => {
-        logger.info('Callback called with', code, data)
+        logger.ffi.info('Callback called with', code, data)
         const pdata = JSON.parse(data)
         callbackBind[uuid] =
           callbackBind[uuid]?.filter(fn => {
@@ -191,7 +204,7 @@ export class Server {
     this.loader.config()
 
     const svr = this.server.listen(port, () => {
-      logger.info(`Server listen on ${port} started`)
+      logger.express.info(`Server listen on ${port} started`)
     })
 
     return () => {
